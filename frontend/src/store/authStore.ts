@@ -6,8 +6,8 @@ import { Platform } from 'react-native';
 
 // Dev API base url (10.0.2.2 resolves to host localhost inside Android emulator, localhost for iOS/web)
 export const API_BASE_URL = Platform.OS === 'android'
-  ? 'http://10.0.2.2:8001/api/v1'
-  : 'http://localhost:8001/api/v1';
+  ? 'http://10.0.2.2:8000/api/v1'
+  : 'http://localhost:8000/api/v1';
 
 export interface UserProfile {
   id: string;

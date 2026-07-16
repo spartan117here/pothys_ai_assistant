@@ -10,3 +10,4 @@ from app.models.task import Task
 from app.models.notification import Notification
 from app.models.conversation import AIConversation, AIMessage
 from app.models.audit import AuditLog
+from app.models.ai_memory import AIMemory

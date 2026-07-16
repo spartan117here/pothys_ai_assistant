@@ -8,11 +8,11 @@ import {
   FlatList,
   ActivityIndicator,
   Modal,
-  SafeAreaView,
   KeyboardAvoidingView,
   Platform,
   ScrollView
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAICopilotQuery, useAIConversations, useAIConversationDetails } from '../../hooks/useAI';
 import { COLORS } from '../../theme/colors';
 

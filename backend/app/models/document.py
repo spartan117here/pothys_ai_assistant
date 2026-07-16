@@ -1,5 +1,5 @@
 import uuid
-from sqlalchemy import String, ForeignKey, DateTime, func, Text
+from sqlalchemy import String, ForeignKey, DateTime, func, Text, Index
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.ext.compiler import compiles
 from pgvector.sqlalchemy import Vector
@@ -15,6 +15,7 @@ class Document(Base):
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
     branch_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("branches.id"), nullable=True)
     uploader_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), nullable=False)
+    report_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("daily_reports.id"), nullable=True)
     file_name: Mapped[str] = mapped_column(String(255), nullable=False)
     file_url: Mapped[str] = mapped_column(String(500), nullable=False)
     file_type: Mapped[str] = mapped_column(String(10), nullable=False)  # "PDF", "EXCEL", "WORD"
@@ -24,11 +25,15 @@ class Document(Base):
     # Relationships
     branch: Mapped["Branch"] = relationship(back_populates="documents")
     uploader: Mapped["User"] = relationship(back_populates="uploaded_documents")
+    report: Mapped["DailyReport"] = relationship(back_populates="documents")
     chunks: Mapped[list["DocumentChunk"]] = relationship(back_populates="document", cascade="all, delete-orphan")
 
 
 class DocumentChunk(Base):
     __tablename__ = "document_chunks"
+    __table_args__ = (
+        Index('ix_document_chunks_embedding', 'embedding', postgresql_using='hnsw', postgresql_with={'m': 16, 'ef_construction': 64}, postgresql_ops={'embedding': 'vector_cosine_ops'}),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
     document_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("documents.id"), nullable=True)

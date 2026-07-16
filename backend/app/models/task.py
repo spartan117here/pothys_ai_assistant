@@ -10,11 +10,11 @@ class Task(Base):
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
     title: Mapped[str] = mapped_column(String(200), nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=True)
-    assigned_to: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), nullable=False)
+    assigned_to: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), nullable=False, index=True)
     assigned_by: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), nullable=False)
-    due_date: Mapped[date] = mapped_column(Date, nullable=False)
+    due_date: Mapped[date] = mapped_column(Date, nullable=False, index=True)
     priority: Mapped[str] = mapped_column(String(20), default="MEDIUM")  # "LOW", "MEDIUM", "HIGH"
-    status: Mapped[str] = mapped_column(String(20), default="PENDING")  # "PENDING", "IN_PROGRESS", "COMPLETED"
+    status: Mapped[str] = mapped_column(String(20), default="PENDING", index=True)  # "PENDING", "IN_PROGRESS", "COMPLETED"
     manager_remarks: Mapped[str] = mapped_column(Text, nullable=True)
     created_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 

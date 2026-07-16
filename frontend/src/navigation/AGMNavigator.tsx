@@ -37,7 +37,7 @@ export default function AGMNavigator() {
         headerTitleStyle: {
           fontWeight: '700',
         },
-        cardStyle: { backgroundColor: COLORS.background },
+        cardStyle: { flex: 1, backgroundColor: COLORS.background },
       }}
     >
       <Stack.Screen

@@ -6,9 +6,9 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
-  SafeAreaView,
   RefreshControl
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useBranchesDashboard } from '../../hooks/useDashboard';
 import { useAuthStore } from '../../store/authStore';
 import { COLORS } from '../../theme/colors';
@@ -58,6 +58,7 @@ export default function AGMDashboardScreen({ navigation }: any) {
       </View>
 
       <ScrollView
+        style={{ flex: 1 }}
         contentContainerStyle={styles.scrollContent}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={COLORS.primary} />

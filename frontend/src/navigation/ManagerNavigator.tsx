@@ -64,7 +64,7 @@ export default function ManagerNavigator() {
           borderColor: COLORS.border,
         },
         headerTintColor: COLORS.text,
-        cardStyle: { backgroundColor: COLORS.background },
+        cardStyle: { flex: 1, backgroundColor: COLORS.background },
       }}
     >
       <Stack.Screen
