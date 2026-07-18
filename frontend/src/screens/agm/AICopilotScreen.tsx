@@ -236,9 +236,6 @@ export default function AICopilotScreen() {
           style={{ flex: 1 }}
           contentContainerStyle={showEmpty ? styles.emptyContent : styles.msgContent}
           removeClippedSubviews={false}
-          onContentSizeChange={() => {
-            try { flatListRef.current?.scrollToEnd({ animated: false }); } catch (_) {}
-          }}
           ListEmptyComponent={
             <Animated.View style={[styles.emptyContainer, { opacity: headerOpacity }]}>
               <View style={[styles.emptyLogo, { backgroundColor: colors.surfaceAlt, borderColor: colors.primary + '50' }]}>

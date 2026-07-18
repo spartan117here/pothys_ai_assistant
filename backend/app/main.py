@@ -10,6 +10,7 @@ from app.api.v1.ai import router as ai_router
 from app.api.v1.tasks import router as tasks_router
 from app.api.v1.meetings import router as meetings_router
 from app.api.v1.emails import router as emails_router
+from app.api.v1.notifications import router as notifications_router
 
 app = FastAPI(
     title="Pothys AGM AI Executive Assistant API",
@@ -47,3 +48,4 @@ app.include_router(ai_router, prefix="/api/v1/ai", tags=["AI Copilot"])
 app.include_router(tasks_router, prefix="/api/v1/tasks", tags=["Task Management"])
 app.include_router(meetings_router, prefix="/api/v1/meetings", tags=["Meeting Management"])
 app.include_router(emails_router, prefix="/api/v1/emails", tags=["Email Assistant"])
+app.include_router(notifications_router, prefix="/api/v1/notifications", tags=["Notifications"])

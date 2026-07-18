@@ -10,6 +10,7 @@ import AGMDashboardScreen from '../screens/agm/AGMDashboardScreen';
 import AICopilotScreen from '../screens/agm/AICopilotScreen';
 import BranchOperationsScreen from '../screens/agm/BranchOperationsScreen';
 import BranchDetailScreen from '../screens/agm/BranchDetailScreen';
+import NotificationCenterScreen from '../screens/agm/NotificationCenterScreen';
 import { useThemeStore } from '../store/themeStore';
 
 const Stack = createStackNavigator();
@@ -100,6 +101,18 @@ export default function AGMNavigator() {
               <View style={[styles.aiHeaderDot, { backgroundColor: colors.primary }]} />
               <Text style={[styles.aiHeaderBadgeText, { color: colors.primary }]}>RAG Mode</Text>
             </View>
+          ),
+        }}
+      />
+      <Stack.Screen
+        name="NotificationCenter"
+        component={NotificationCenterScreen}
+        options={{
+          title: 'Notification Center',
+          headerLeft: ({ onPress }) => (
+            <TouchableOpacity onPress={onPress} style={styles.backBtn}>
+              <Text style={[styles.backBtnText, { color: colors.primary }]}>‹</Text>
+            </TouchableOpacity>
           ),
         }}
       />

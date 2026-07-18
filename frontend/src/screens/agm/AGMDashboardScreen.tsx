@@ -8,11 +8,13 @@ import {
   Animated,
   ActivityIndicator,
   RefreshControl,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useBranchesDashboard, useDashboardSummary } from '../../hooks/useDashboard';
 import { useAuthStore } from '../../store/authStore';
 import { useThemeStore } from '../../store/themeStore';
+import { useUnreadCount } from '../../hooks/useNotifications';
 import { getShortBranchName } from '../../utils/branchHelper';
 import { formatIndianCurrency } from '../../utils/currencyFormatter';
 
@@ -147,6 +149,10 @@ export default function AGMDashboardScreen({ navigation }: any) {
   const { data: branches, isLoading: branchesLoading, refetch: refetchBranches } = useBranchesDashboard();
   const { data: summary, isLoading: summaryLoading, refetch: refetchSummary } = useDashboardSummary();
 
+  // Bell badge: driven by the backend unread count API
+  const { data: unreadData } = useUnreadCount();
+  const unreadCount = unreadData?.count ?? 0;
+
   const handleRefresh = async () => {
     setRefreshing(true);
     await Promise.all([refetchBranches(), refetchSummary()]);
@@ -222,6 +228,18 @@ export default function AGMDashboardScreen({ navigation }: any) {
         <View style={styles.headerRight}>
           <TouchableOpacity 
             style={[styles.themeToggleBtn, { backgroundColor: colors.surfaceAlt, borderColor: colors.border }]} 
+            onPress={() => navigation.navigate('NotificationCenter')} 
+            activeOpacity={0.7}
+          >
+            <Text style={styles.themeToggleIcon}>🔔</Text>
+            {unreadCount > 0 && (
+              <View style={[styles.bellBadge, { backgroundColor: colors.error }]}>
+                <Text style={styles.bellBadgeText}>{unreadCount}</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.themeToggleBtn, { backgroundColor: colors.surfaceAlt, borderColor: colors.border }]} 
             onPress={toggleTheme} 
             activeOpacity={0.7}
           >
@@ -250,28 +268,7 @@ export default function AGMDashboardScreen({ navigation }: any) {
           {new Date().toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
         </Text>
 
-        {/* Critical Alert Banner */}
-        {(activeAlerts.length > 0 || complaintsCount > 0) && (
-          <Animated.View style={[styles.alertBanner, { opacity: headerFade, backgroundColor: colors.error + '0C', borderColor: colors.error + '40' }]}>
-            <View style={styles.alertBannerHeader}>
-              <Text style={styles.alertBannerIcon}>⚠️</Text>
-              <Text style={[styles.alertBannerTitle, { color: colors.error }]}>OPERATIONAL NOTICES & ALERTS</Text>
-              <View style={[styles.alertBannerBadge, { backgroundColor: colors.error }]}>
-                <Text style={styles.alertBannerBadgeText}>{activeAlerts.length + complaintsCount}</Text>
-              </View>
-            </View>
-            {activeAlerts.slice(0, 2).map((alert, idx) => (
-              <Text key={idx} style={[styles.alertBannerItem, { color: colors.text }]}>
-                {getShortBranchName(alert.name)}: {alert.report?.issues}
-              </Text>
-            ))}
-            {summary?.complaints && summary.complaints.slice(0, 2).map((comp, idx) => (
-              <Text key={`c-${idx}`} style={[styles.alertBannerItem, { color: colors.warning }]}>
-                Complaint: "{comp}"
-              </Text>
-            ))}
-          </Animated.View>
-        )}
+
 
         {/* KPI Section Header */}
         <Text style={[styles.sectionHeading, { color: colors.textSecondary }]}>TODAY'S PERFORMANCE</Text>
@@ -684,5 +681,21 @@ const styles = StyleSheet.create({
   fabIcon: {
     fontSize: 22,
     fontWeight: '600',
+  },
+  bellBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 3,
+  },
+  bellBadgeText: {
+    color: '#ffffff',
+    fontSize: 9,
+    fontWeight: '900',
   },
 });
