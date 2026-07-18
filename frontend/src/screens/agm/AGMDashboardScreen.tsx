@@ -14,6 +14,7 @@ import { useBranchesDashboard, useDashboardSummary } from '../../hooks/useDashbo
 import { useAuthStore } from '../../store/authStore';
 import { useThemeStore } from '../../store/themeStore';
 import { getShortBranchName } from '../../utils/branchHelper';
+import { formatIndianCurrency } from '../../utils/currencyFormatter';
 
 function getGreeting(): string {
   const hour = new Date().getHours();
@@ -30,14 +31,15 @@ function getMrPrefix(fullName?: string): string {
 
 interface KPICardProps {
   label: string;
-  value: string;
-  sub: string;
+  value?: string;
+  sub?: string;
   delay: number;
   valueColor?: string;
   accent?: boolean;
+  children?: React.ReactNode;
 }
 
-function KPICard({ label, value, sub, delay, valueColor, accent }: KPICardProps) {
+function KPICard({ label, value, sub, delay, valueColor, accent, children }: KPICardProps) {
   const { colors } = useThemeStore();
   const anim = useRef(new Animated.Value(0)).current;
 
@@ -69,8 +71,66 @@ function KPICard({ label, value, sub, delay, valueColor, accent }: KPICardProps)
       ]}
     >
       <Text style={[styles.kpiLabel, { color: colors.textSecondary }]}>{label}</Text>
-      <Text style={[styles.kpiValue, { color: colors.text }, valueColor ? { color: valueColor } : {}]}>{value}</Text>
-      <Text style={[styles.kpiSub, { color: colors.textMuted }]}>{sub}</Text>
+      {children ? children : (
+        <>
+          <Text style={[styles.kpiValue, { color: colors.text }, valueColor ? { color: valueColor } : {}]}>{value}</Text>
+          <Text style={[styles.kpiSub, { color: colors.textMuted }]}>{sub}</Text>
+        </>
+      )}
+    </Animated.View>
+  );
+}
+
+interface ExecInfoCardProps {
+  icon: string;
+  title: string;
+  name: string;
+  roleOrSub?: string;
+  metricLabel?: string;
+  metricValue?: string;
+  actionText: string;
+  onPress: () => void;
+  delay: number;
+}
+
+function ExecInfoCard({ icon, title, name, roleOrSub, metricLabel, metricValue, actionText, onPress, delay }: ExecInfoCardProps) {
+  const { colors } = useThemeStore();
+  const anim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.timing(anim, {
+      toValue: 1,
+      duration: 500,
+      delay,
+      useNativeDriver: true,
+    }).start();
+  }, []);
+
+  return (
+    <Animated.View style={{ opacity: anim, transform: [{ translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [20, 0] }) }] }}>
+      <TouchableOpacity
+        style={[styles.execCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
+        onPress={onPress}
+        activeOpacity={0.85}
+      >
+        <View style={styles.execCardHeader}>
+          <Text style={styles.execCardIcon}>{icon}</Text>
+          <Text style={[styles.execCardTitle, { color: colors.textSecondary }]}>{title}</Text>
+        </View>
+        <Text style={[styles.execCardName, { color: colors.text }]}>{name}</Text>
+        {roleOrSub ? <Text style={[styles.execCardRole, { color: colors.textSecondary }]}>{roleOrSub}</Text> : null}
+        
+        {metricLabel && metricValue ? (
+          <View style={styles.execCardMetricRow}>
+            <Text style={[styles.execCardMetricLabel, { color: colors.textMuted }]}>{metricLabel}</Text>
+            <Text style={[styles.execCardMetricValue, { color: colors.text }]}>{metricValue}</Text>
+          </View>
+        ) : null}
+
+        <View style={[styles.execCardActionRow, { borderTopColor: colors.border }]}>
+          <Text style={[styles.execCardActionText, { color: colors.primary }]}>{actionText}</Text>
+        </View>
+      </TouchableOpacity>
     </Animated.View>
   );
 }
@@ -220,7 +280,7 @@ export default function AGMDashboardScreen({ navigation }: any) {
         <View style={styles.kpiRow}>
           <KPICard
             label="TOTAL REVENUE"
-            value={`₹${(totalRevenue / 100000).toFixed(2)}L`}
+            value={formatIndianCurrency(totalRevenue)}
             sub="Across all branches today"
             delay={100}
             accent
@@ -237,59 +297,50 @@ export default function AGMDashboardScreen({ navigation }: any) {
           />
         </View>
 
-        {/* KPI Row 2 - DigiGold & DigiSilver Enrollments */}
+        {/* KPI Row 2 - Schemes & Attendance */}
         <View style={styles.kpiRow}>
           <KPICard
-            label="DIGIGOLD SCHEME"
-            value={String(digiGoldCount)}
-            sub="New enrollments today"
+            label="SCHEMES"
             delay={250}
-            valueColor={colors.primary}
-          />
+          >
+            <View style={{ marginTop: 6, gap: 4 }}>
+              <Text style={{ fontSize: 15, fontWeight: '700', color: colors.text }}>
+                DigiGold: <Text style={{ color: colors.primary }}>{digiGoldCount}</Text>
+              </Text>
+              <Text style={{ fontSize: 15, fontWeight: '700', color: colors.text }}>
+                DigiSilver: <Text style={{ color: colors.textSecondary }}>{digiSilverCount}</Text>
+              </Text>
+            </View>
+          </KPICard>
           <KPICard
-            label="DIGISILVER SCHEME"
-            value={String(digiSilverCount)}
-            sub="New enrollments today"
-            delay={300}
-            valueColor={colors.textSecondary}
-          />
-        </View>
-
-        {/* KPI Row 3 - Attendance & Complaints */}
-        <View style={styles.kpiRow}>
-          <KPICard
-            label="STAFF ATTENDANCE"
-            value={`${empPresent} Present`}
+            label="ATTENDANCE"
+            value={String(empPresent)}
             sub={`${empAbsent} Absent today`}
             delay={350}
             valueColor={colors.success}
           />
-          <KPICard
-            label="CUSTOMER COMPLAINTS"
-            value={String(complaintsCount)}
-            sub={complaintsCount > 0 ? "Complaints registered" : "All customers satisfied"}
-            delay={400}
-            valueColor={complaintsCount > 0 ? colors.error : colors.success}
-          />
         </View>
 
-        {/* KPI Row 4 - Top branch & Top Employee */}
-        <View style={styles.kpiRow}>
-          <KPICard
-            label="TOP BRANCH"
-            value={topBranch}
-            sub="Highest revenue today"
-            delay={450}
-            valueColor={colors.success}
-          />
-          <KPICard
-            label="TOP EXECUTIVE"
-            value={topEmployee.split(" - ")[0]}
-            sub={topEmployee.includes(" - ") ? topEmployee.split(" - ")[1] : "No sales logged"}
-            delay={500}
-            accent
-          />
-        </View>
+        {/* Executive Info Cards - Top branch & Top Employee */}
+        <ExecInfoCard
+          icon="🏆"
+          title="Top Performing Branch"
+          name={topBranch.split(" - ")[0] || "N/A"}
+          metricLabel={topBranch.includes(" - ") ? "Today's Metric" : undefined}
+          metricValue={topBranch.includes(" - ") ? topBranch.split(" - ")[1] : undefined}
+          actionText="Tap to view complete branch analytics →"
+          onPress={() => navigation.navigate('BranchOperations')}
+          delay={450}
+        />
+        <ExecInfoCard
+          icon="👤"
+          title="Top Performing Executive"
+          name={topEmployee.split(" - ")[0] || "N/A"}
+          roleOrSub={topEmployee.includes(" - ") ? topEmployee.split(" - ")[1] : undefined}
+          actionText="Tap to view employee performance →"
+          onPress={() => navigation.navigate('BranchOperations')}
+          delay={500}
+        />
 
         {/* KPI Row 5 - Submissions & Active Alerts */}
         <View style={styles.kpiRow}>
@@ -378,9 +429,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 28,
-    paddingTop: 16,
-    paddingBottom: 24,
+    paddingHorizontal: 18,
+    paddingTop: 12,
+    paddingBottom: 16,
     borderBottomWidth: 1,
   },
   headerLeft: {
@@ -392,161 +443,217 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   brandMark: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '900',
-    letterSpacing: 6,
-    marginBottom: 10,
+    letterSpacing: 5,
+    marginBottom: 4,
   },
   headerGreeting: {
-    fontSize: 20,
+    fontSize: 16,
     fontWeight: '400',
-    lineHeight: 26,
+    lineHeight: 20,
   },
   headerName: {
-    fontSize: 34,
+    fontSize: 22,
     fontWeight: '800',
-    lineHeight: 40,
+    lineHeight: 28,
     letterSpacing: -0.5,
-    marginVertical: 4,
+    marginVertical: 2,
   },
   headerDesignation: {
-    fontSize: 16,
+    fontSize: 13,
     fontWeight: '500',
     letterSpacing: 0.5,
     marginTop: 2,
   },
   themeToggleBtn: {
     borderWidth: 1,
-    width: 42,
-    height: 42,
-    borderRadius: 21,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
   },
   themeToggleIcon: {
-    fontSize: 18,
+    fontSize: 16,
   },
   logoutBtn: {
     borderWidth: 1,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
   },
   logoutBtnText: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '600',
   },
   scrollContent: {
-    padding: 24,
-    paddingBottom: 140,
+    padding: 16,
+    paddingBottom: 120,
   },
   dateStrip: {
-    fontSize: 15,
+    fontSize: 13,
     letterSpacing: 0.5,
-    marginBottom: 28,
+    marginBottom: 16,
   },
   alertBanner: {
     borderWidth: 1,
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 32,
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 18,
   },
   alertBannerHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    marginBottom: 12,
+    gap: 8,
+    marginBottom: 8,
   },
   alertBannerIcon: {
-    fontSize: 18,
+    fontSize: 16,
   },
   alertBannerTitle: {
-    fontSize: 12,
+    fontSize: 10,
     fontWeight: '800',
-    letterSpacing: 2.5,
+    letterSpacing: 2,
     flex: 1,
   },
   alertBannerBadge: {
-    borderRadius: 12,
-    width: 24,
-    height: 24,
+    borderRadius: 10,
+    width: 20,
+    height: 20,
     alignItems: 'center',
     justifyContent: 'center',
   },
   alertBannerBadgeText: {
     color: '#ffffff',
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '800',
   },
   alertBannerItem: {
-    fontSize: 15,
-    lineHeight: 22,
-    marginBottom: 6,
-    paddingLeft: 28,
+    fontSize: 13,
+    lineHeight: 18,
+    marginBottom: 4,
+    paddingLeft: 24,
   },
   sectionHeading: {
-    fontSize: 19,
+    fontSize: 14,
     fontWeight: '800',
     letterSpacing: 0.8,
-    marginBottom: 20,
-    marginTop: 12,
+    marginBottom: 12,
+    marginTop: 8,
   },
   kpiRow: {
     flexDirection: 'row',
-    gap: 18,
-    marginBottom: 18,
+    gap: 8,
+    marginBottom: 8,
   },
   kpiCard: {
     flex: 1,
-    borderRadius: 24,
+    borderRadius: 16,
     borderWidth: 1,
-    padding: 24,
+    padding: 12,
   },
   kpiLabel: {
-    fontSize: 16,
+    fontSize: 12,
     fontWeight: '700',
     letterSpacing: 1,
-    marginBottom: 12,
+    marginBottom: 8,
   },
   kpiValue: {
-    fontSize: 34,
+    fontSize: 26,
     fontWeight: '900',
     letterSpacing: -1,
   },
   kpiSub: {
-    fontSize: 15,
-    marginTop: 8,
-    lineHeight: 20,
+    fontSize: 13,
+    marginTop: 6,
+    lineHeight: 16,
   },
-  branchNavCard: {
-    borderRadius: 24,
+  execCard: {
+    borderRadius: 12,
     borderWidth: 1,
-    padding: 26,
+    paddingHorizontal: 12,
+    paddingTop: 10,
+    paddingBottom: 10,
+    marginBottom: 8,
+  },
+  execCardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 32,
+    gap: 8,
+    marginBottom: 8,
+  },
+  execCardIcon: {
+    fontSize: 12,
+  },
+  execCardTitle: {
+    fontSize: 9,
+    fontWeight: '700',
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+  },
+  execCardName: {
+    fontSize: 18,
+    fontWeight: '700',
+    letterSpacing: 0.2,
+    marginBottom: 2,
+  },
+  execCardRole: {
+    fontSize: 12,
+    marginBottom: 8,
+  },
+  execCardMetricRow: {
+    marginTop: 4,
+    marginBottom: 12,
+  },
+  execCardMetricLabel: {
+    fontSize: 11,
+    fontWeight: '500',
+    marginBottom: 2,
+  },
+  execCardMetricValue: {
+    fontSize: 20,
+    fontWeight: '800',
+    letterSpacing: -0.5,
+  },
+  execCardActionRow: {
+    borderTopWidth: 1,
+    paddingTop: 8,
+    marginTop: 2,
+  },
+  execCardActionText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  branchNavCard: {
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 18,
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
   },
   branchNavCardLeft: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 20,
+    gap: 14,
   },
   branchNavCardIcon: {
-    fontSize: 36,
+    fontSize: 28,
   },
   branchNavCardTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '800',
-    marginBottom: 4,
+    marginBottom: 2,
   },
   branchNavCardSub: {
-    fontSize: 15,
-    marginBottom: 8,
-    lineHeight: 20,
+    fontSize: 13,
+    marginBottom: 6,
+    lineHeight: 18,
   },
   branchNavCardMeta: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '700',
   },
   fabContainer: {

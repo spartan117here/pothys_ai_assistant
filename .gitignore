@@ -11,6 +11,9 @@ backend/*.db
 backend/test.db
 backend/test_temp.db
 
+# Uploaded Reports
+backend/uploads/
+
 # Environment
 backend/.env
 frontend/.env

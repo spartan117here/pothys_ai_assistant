@@ -13,6 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useBranchesDashboard } from '../../hooks/useDashboard';
 import { useThemeStore } from '../../store/themeStore';
 import { getShortBranchName } from '../../utils/branchHelper';
+import { formatIndianCurrency } from '../../utils/currencyFormatter';
 
 export default function BranchOperationsScreen({ navigation }: any) {
   const { data: branches, isLoading, refetch } = useBranchesDashboard();
@@ -147,7 +148,7 @@ export default function BranchOperationsScreen({ navigation }: any) {
                     <View style={styles.metricsRow}>
                       <View style={styles.metric}>
                         <Text style={[styles.metricValue, { color: colors.text }]}>
-                          ₹{((branch.report.sales_amount || 0) / 100000).toFixed(2)}L
+                          {formatIndianCurrency(branch.report.sales_amount || 0)}
                         </Text>
                         <Text style={[styles.metricLabel, { color: colors.textSecondary }]}>Sales</Text>
                       </View>

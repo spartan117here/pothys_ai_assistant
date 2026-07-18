@@ -13,6 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useBranchAnalytics } from '../../hooks/useDashboard';
 import { useThemeStore } from '../../store/themeStore';
 import { getShortBranchName } from '../../utils/branchHelper';
+import { formatIndianCurrency } from '../../utils/currencyFormatter';
 import { BranchStatus } from '../../hooks/useDashboard';
 
 interface BranchDetailScreenProps {
@@ -84,6 +85,14 @@ export default function BranchDetailScreen({ navigation, route }: any) {
   const [refreshing, setRefreshing] = React.useState(false);
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
+  useEffect(() => {
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 500,
+      useNativeDriver: true,
+    }).start();
+  }, []);
+
   const handleRefresh = async () => {
     setRefreshing(true);
     await refetch();
@@ -122,13 +131,7 @@ export default function BranchDetailScreen({ navigation, route }: any) {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['bottom']}>
-      {/* Back navigation header */}
-      <View style={[styles.customHeader, { borderBottomColor: colors.border, backgroundColor: colors.surface }]}>
-        <TouchableOpacity style={styles.backHeaderBtn} onPress={() => navigation.goBack()}>
-          <Text style={[styles.backHeaderArrow, { color: colors.primary }]}>‹</Text>
-          <Text style={[styles.backHeaderText, { color: colors.text }]}>Branch Operations</Text>
-        </TouchableOpacity>
-      </View>
+      {/* Removed custom header since React Navigation already handles the header */}
 
       <ScrollView
         style={{ flex: 1 }}
@@ -168,8 +171,7 @@ export default function BranchDetailScreen({ navigation, route }: any) {
                   <View>
                     <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>TOTAL REVENUE</Text>
                     <Text style={[styles.bigSalesNumber, { color: colors.text }]}>
-                      ₹{(totalRevenue / 100000).toFixed(2)}
-                      <Text style={[styles.bigSalesUnit, { color: colors.textSecondary }]}> L</Text>
+                      {formatIndianCurrency(totalRevenue)}
                     </Text>
                   </View>
                   <View style={styles.targetStatusBadge}>
@@ -196,19 +198,19 @@ export default function BranchDetailScreen({ navigation, route }: any) {
                 <Text style={[styles.subSectionTitle, { color: colors.primary, marginTop: 16 }]}>SALES BREAKDOWN</Text>
                 <MetricRow
                   label="Gold Sales"
-                  value={`₹${(goldSales / 100000).toFixed(2)}L`}
+                  value={formatIndianCurrency(goldSales)}
                 />
                 <MetricRow
                   label="Silver Sales"
-                  value={`₹${(silverSales / 100000).toFixed(2)}L`}
+                  value={formatIndianCurrency(silverSales)}
                 />
                 <MetricRow
                   label="Platinum Sales"
-                  value={`₹${(platinumSales / 100000).toFixed(2)}L`}
+                  value={formatIndianCurrency(platinumSales)}
                 />
                 <MetricRow
                   label="Diamond Sales"
-                  value={`₹${(diamondSales / 100000).toFixed(2)}L`}
+                  value={formatIndianCurrency(diamondSales)}
                 />
               </SectionCard>
 
@@ -290,7 +292,7 @@ export default function BranchDetailScreen({ navigation, route }: any) {
                           <Text style={[styles.empTableDesc, { color: colors.textMuted }]}>{emp.designation}</Text>
                         </View>
                         <Text style={[styles.empTableSales, { color: colors.text, flex: 1.5, textAlign: 'right' }]}>
-                          ₹{(totalSales / 1000).toFixed(0)}k
+                          {formatIndianCurrency(totalSales)}
                         </Text>
                         <Text style={[styles.empTableSchemes, { color: colors.primary, flex: 1, textAlign: 'right' }]}>
                           {totalSchemes}
@@ -311,7 +313,7 @@ export default function BranchDetailScreen({ navigation, route }: any) {
                 <SectionCard title="30-DAY OPERATIONAL SUMMARY">
                   <MetricRow
                     label="Total Sales (30 Days)"
-                    value={`₹${((analytics.summary.total_sales || 0) / 100000).toFixed(2)}L`}
+                    value={formatIndianCurrency(analytics.summary.total_sales || 0)}
                   />
                   <MetricRow
                     label="Reports Submitted"
@@ -371,56 +373,36 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  customHeader: {
-    height: 56,
-    borderBottomWidth: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-  },
-  backHeaderBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  backHeaderArrow: {
-    fontSize: 28,
-    lineHeight: 28,
-    fontWeight: '300',
-  },
-  backHeaderText: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
+
   scrollContent: {
-    padding: 24,
-    paddingBottom: 60,
+    padding: 20,
+    paddingBottom: 48,
   },
   heroSection: {
     alignItems: 'center',
-    paddingVertical: 24,
-    marginBottom: 12,
+    paddingVertical: 16,
+    marginBottom: 8,
   },
   heroIcon: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 16,
+    marginBottom: 12,
   },
   heroIconText: {
-    fontSize: 36,
+    fontSize: 28,
   },
   heroName: {
-    fontSize: 30,
+    fontSize: 26,
     fontWeight: '800',
     letterSpacing: 0.5,
   },
   heroCode: {
-    fontSize: 14,
-    marginTop: 4,
+    fontSize: 12,
+    marginTop: 2,
     letterSpacing: 2,
     textTransform: 'uppercase',
   },
@@ -428,9 +410,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingVertical: 6,
     borderRadius: 20,
-    marginTop: 14,
+    marginTop: 10,
     gap: 8,
   },
   heroBadgeDot: {
@@ -446,14 +428,14 @@ const styles = StyleSheet.create({
   sectionCard: {
     borderRadius: 20,
     borderWidth: 1,
-    padding: 24,
-    marginBottom: 16,
+    padding: 18,
+    marginBottom: 12,
   },
   sectionTitle: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '800',
     letterSpacing: 2,
-    marginBottom: 16,
+    marginBottom: 12,
   },
   summaryTopRow: {
     flexDirection: 'row',
@@ -461,10 +443,10 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   summaryLabel: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600',
     letterSpacing: 1.5,
-    marginBottom: 4,
+    marginBottom: 2,
   },
   targetStatusBadge: {
     paddingHorizontal: 12,
@@ -478,22 +460,22 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   progressRow: {
-    marginTop: 14,
-    marginBottom: 12,
+    marginTop: 10,
+    marginBottom: 10,
   },
   subSectionTitle: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '800',
     letterSpacing: 1.5,
-    marginBottom: 8,
+    marginBottom: 6,
   },
   bigSalesNumber: {
-    fontSize: 40,
+    fontSize: 36,
     fontWeight: '900',
     letterSpacing: -0.5,
   },
   bigSalesUnit: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: '400',
   },
   sectionNote: {
@@ -529,14 +511,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 12,
+    paddingVertical: 10,
     borderBottomWidth: 1,
   },
   metricLabel: {
-    fontSize: 14,
+    fontSize: 13,
   },
   metricValue: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '700',
   },
   auditColumn: {
@@ -544,13 +526,13 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   auditLabel: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600',
   },
   auditText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '500',
-    lineHeight: 20,
+    lineHeight: 18,
   },
   alertBox: {
     borderRadius: 12,
@@ -567,57 +549,57 @@ const styles = StyleSheet.create({
   },
   topPerformerCard: {
     borderRadius: 20,
-    padding: 20,
+    padding: 16,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 16,
-    marginBottom: 16,
+    gap: 14,
+    marginBottom: 12,
   },
   topPerformerIcon: {
-    fontSize: 32,
+    fontSize: 28,
   },
   topPerformerLabel: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '800',
     letterSpacing: 1.5,
-    marginBottom: 4,
+    marginBottom: 2,
   },
   topPerformerValue: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '700',
   },
   tableHeader: {
     flexDirection: 'row',
-    paddingBottom: 8,
+    paddingBottom: 6,
     borderBottomWidth: 1,
     borderBottomColor: '#cbd5e1',
-    marginBottom: 8,
+    marginBottom: 6,
   },
   tableColName: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '700',
     letterSpacing: 1,
     textTransform: 'uppercase',
   },
   tableRow: {
     flexDirection: 'row',
-    paddingVertical: 10,
+    paddingVertical: 8,
     borderBottomWidth: 0.5,
     alignItems: 'center',
   },
   empTableName: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '700',
   },
   empTableDesc: {
     fontSize: 12,
   },
   empTableSales: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
   },
   empTableSchemes: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '700',
   },
   analyticsLoading: {
@@ -651,22 +633,22 @@ const styles = StyleSheet.create({
   },
   aiCard: {
     borderRadius: 20,
-    padding: 22,
-    marginTop: 6,
-    marginBottom: 12,
+    padding: 18,
+    marginTop: 4,
+    marginBottom: 8,
   },
   aiHeaderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 6,
   },
   aiArrow: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '700',
   },
   aiCardTitle: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '700',
   },
   aiCardDesc: {

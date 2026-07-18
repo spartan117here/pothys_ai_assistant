@@ -629,6 +629,11 @@ class IntentRouter:
 class RAGEngine:
     def __init__(self):
         self.detector = IntentDetector()
+        from openai import OpenAI
+        self.client = OpenAI(api_key=settings.OPENAI_API_KEY or "dummy")
+
+    def is_query_in_domain(self, query: str) -> bool:
+        return self.detector.is_query_in_domain(query)
 
     def chunk_text(self, text: str, chunk_size: int = 800, overlap: int = 100) -> List[str]:
         if not text:
@@ -668,8 +673,8 @@ class RAGEngine:
         # 2. Static / Quick Intents
         if intent == "out_of_domain":
             response = (
-                "I am the Pothys AGM AI Assistant. I can only assist with branch operations, "
-                "reports, meetings, sales and business insights."
+                "I am the Pothys AGM AI Assistant. My responses are restricted to Pothys business operations. "
+                "I can only assist with branch operations, reports, meetings, sales and business insights."
             )
             print("[LOGGING] [RESPONSE] Handler: OUT_OF_DOMAIN | Status: SUCCESS")
             return response, []
