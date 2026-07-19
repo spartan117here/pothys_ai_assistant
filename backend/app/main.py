@@ -11,12 +11,25 @@ from app.api.v1.tasks import router as tasks_router
 from app.api.v1.meetings import router as meetings_router
 from app.api.v1.emails import router as emails_router
 from app.api.v1.notifications import router as notifications_router
+from app.db.seed import seed_database
 
 app = FastAPI(
     title="Pothys AGM AI Executive Assistant API",
     description="Domain-restricted enterprise operational monitoring and RAG copilot API",
     version="1.0.0",
 )
+
+@app.on_event("startup")
+def startup_event():
+    import sys
+    if "pytest" in sys.modules:
+        print("Bypassing database auto-seeding in testing environment.")
+        return
+    try:
+        seed_database()
+        print("Database auto-seeding completed successfully on startup.")
+    except Exception as e:
+        print(f"Database auto-seeding failed on startup: {e}")
 
 # CORS configuration for mobile and web cross-platform requests
 app.add_middleware(

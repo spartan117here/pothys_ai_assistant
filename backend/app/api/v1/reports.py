@@ -4,6 +4,7 @@ from typing import Optional, List
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, status, BackgroundTasks
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from datetime import datetime, timezone
 
 from app.db.session import get_db, AsyncSessionLocal
 from app.api.deps import get_current_user, check_role
@@ -13,6 +14,43 @@ from app.models.document import DocumentChunk
 from app.models.employee import Employee
 from app.models.employee_performance import EmployeePerformance
 from app.models.scheme_summary import SchemeSummary
+from app.models.notification import Notification
+from app.models.branch import Branch
+
+async def trigger_submitted_notification(db: AsyncSession, branch_id: uuid.UUID):
+    """Creates a 'Report Submitted' notification immediately for all AGM users with exact timestamp."""
+    branch_res = await db.execute(select(Branch).where(Branch.id == branch_id))
+    branch = branch_res.scalar_one_or_none()
+    short_name = branch.name.replace("Swarna Mahal", "").strip() if branch else "Branch"
+    
+    agm_res = await db.execute(select(User).where(User.role == "AGM"))
+    agm_users = agm_res.scalars().all()
+    
+    for agm_user in agm_users:
+        pending_title = f"Report Pending: {short_name}"
+        await db.execute(
+            delete(Notification)
+            .where(Notification.user_id == agm_user.id)
+            .where(Notification.title == pending_title)
+        )
+        
+        submitted_title = f"Report Submitted: {short_name}"
+        await db.execute(
+            delete(Notification)
+            .where(Notification.user_id == agm_user.id)
+            .where(Notification.title == submitted_title)
+        )
+        
+        new_notif = Notification(
+            user_id=agm_user.id,
+            title=submitted_title,
+            message="Daily operations report has been successfully submitted and approved.",
+            type="Report Submitted",
+            is_read=False,
+            branch_id=branch_id,
+            created_at=datetime.now(timezone.utc)
+        )
+        db.add(new_notif)
 from app.repositories.report import DailyReportRepository
 from app.repositories.branch import BranchRepository
 from app.repositories.document import DocumentRepository
@@ -198,8 +236,40 @@ async def upload_daily_report(
 
     report_repo = DailyReportRepository(db)
     
-    # Check if a report for this branch and date already exists (Upsert logic)
-    existing_report = await report_repo.get_by_branch_and_date(current_user.branch_id, report_date)
+    # Resolve which branch this report is actually for (dynamic branch mapping)
+    branch_id = current_user.branch_id
+    
+    if current_user.role == "MANAGER":
+        branch_id = current_user.branch_id
+    else:
+        excel_branch_name = None
+        if parsed_metrics and "pothys_data" in parsed_metrics:
+            excel_branch_name = parsed_metrics["pothys_data"].get("summary", {}).get("branch_name")
+            
+        branch_repo = BranchRepository(db)
+        all_branches = await branch_repo.get_all()
+        
+        matched_branch = None
+        if excel_branch_name:
+            clean_excel_name = excel_branch_name.strip().lower()
+            for b in all_branches:
+                clean_b_name = b.name.strip().lower()
+                if clean_excel_name == clean_b_name or clean_b_name in clean_excel_name or clean_excel_name in clean_b_name:
+                    matched_branch = b
+                    break
+                    
+        if not matched_branch and extracted_text:
+            clean_text = extracted_text.lower()
+            for b in all_branches:
+                if b.name.lower() in clean_text or b.code.lower() in clean_text or b.name.split(" ")[0].lower() in clean_text:
+                    matched_branch = b
+                    break
+                    
+        if matched_branch:
+            branch_id = matched_branch.id
+    
+    # Check if a report for this resolved branch and date already exists (Upsert logic)
+    existing_report = await report_repo.get_by_branch_and_date(branch_id, report_date)
     
     # Prepare text for vector indexing (use file extracted text or fallback to structured fields)
     index_text = extracted_text if file else f"Daily operational report for branch on {report_date}.\nSales Amount: {final_sales} INR\nStaff Attendance: {final_attendance} present\nTarget Achievement: {final_target}%\nInventory status: {final_inventory}\nRemarks: {final_remarks}\nIssues: {final_issues}"
@@ -221,10 +291,13 @@ async def upload_daily_report(
             
         pothys_data = parsed_metrics.get("pothys_data")
         if pothys_data:
-            await save_pothys_data(db, existing_report, pothys_data, current_user.branch_id)
+            await save_pothys_data(db, existing_report, pothys_data, branch_id)
             
         await db.commit()
         await db.refresh(existing_report)
+        
+        await trigger_submitted_notification(db, branch_id)
+        await db.commit()
         
         # Trigger background vector indexing
         background_tasks.add_task(vector_index_report_text, existing_report.id, index_text)
@@ -244,16 +317,19 @@ async def upload_daily_report(
 
     try:
         new_report = await report_repo.create(
-            branch_id=current_user.branch_id,
+            branch_id=branch_id,
             manager_id=current_user.id,
             report_in=report_in
         )
         
         pothys_data = parsed_metrics.get("pothys_data")
         if pothys_data:
-            await save_pothys_data(db, new_report, pothys_data, current_user.branch_id)
+            await save_pothys_data(db, new_report, pothys_data, branch_id)
             await db.commit()
             await db.refresh(new_report)
+            
+        await trigger_submitted_notification(db, branch_id)
+        await db.commit()
             
         # Trigger background vector indexing
         background_tasks.add_task(vector_index_report_text, new_report.id, index_text)

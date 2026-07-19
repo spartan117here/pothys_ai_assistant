@@ -16,10 +16,22 @@ async def sync_user_notifications(db: AsyncSession, current_user: User):
     """
     Synchronizes notifications table with today's branch activity and seeds historical mocks.
     """
-    from datetime import date, datetime, timedelta, timezone
-    from sqlalchemy import select
+    from datetime import date, datetime, timedelta, timezone, time
+    from sqlalchemy import select, delete
     from app.models.branch import Branch
     from app.models.report import DailyReport
+    from app.core.config import settings
+    
+    # Parse configured submission limit time (e.g. "19:00" IST)
+    try:
+        limit_hour, limit_minute = map(int, settings.REPORT_SUBMISSION_TIME.split(":"))
+    except Exception:
+        limit_hour, limit_minute = 19, 0
+        
+    ist = timezone(timedelta(hours=5, minutes=30))
+    now_ist = datetime.now(ist)
+    limit_time = time(limit_hour, limit_minute)
+    is_after_limit = now_ist.time() >= limit_time
     
     target_date = date.today()
     
@@ -47,33 +59,20 @@ async def sync_user_notifications(db: AsyncSession, current_user: User):
     # Synchronize today's notifications
     for branch in branches:
         short_name = get_short_branch_name(branch.name)
+        pending_title = f"Report Pending: {short_name}"
+        submitted_title = f"Report Submitted: {short_name}"
+        issue_title = f"Operational Issue at {short_name}"
         
-        # Report Submitted vs Report Pending
+        # If report has been submitted
         if branch.id in reports_map:
             report = reports_map[branch.id]
             
             # If "Report Pending" notification exists, remove it
-            pending_title = f"Report Pending: {short_name}"
             if pending_title in existing_by_title:
                 await db.delete(existing_by_title[pending_title])
                 
-            # Create "Report Submitted" notification
-            submitted_title = f"Report Submitted: {short_name}"
-            if submitted_title not in existing_by_title:
-                new_notif = Notification(
-                    user_id=current_user.id,
-                    title=submitted_title,
-                    message="Daily operations report has been successfully submitted and approved.",
-                    type="Report Submitted",
-                    is_read=False,
-                    branch_id=branch.id,
-                    created_at=datetime.now(timezone.utc) - timedelta(minutes=15)
-                )
-                db.add(new_notif)
-                
             # Operational Issue (if any)
             if report.issues and report.issues.strip() and report.issues.lower() != "none":
-                issue_title = f"Operational Issue at {short_name}"
                 if issue_title not in existing_by_title:
                     new_notif = Notification(
                         user_id=current_user.id,
@@ -86,35 +85,37 @@ async def sync_user_notifications(db: AsyncSession, current_user: User):
                     )
                     db.add(new_notif)
             else:
-                # If there are no issues, ensure any active "Operational Issue" notification is removed
-                issue_title = f"Operational Issue at {short_name}"
                 if issue_title in existing_by_title:
                     await db.delete(existing_by_title[issue_title])
         else:
-            # Report is pending
-            # If "Report Submitted" notification exists, remove it
-            submitted_title = f"Report Submitted: {short_name}"
+            # Report is pending/missing for today.
+            # Ensure "Report Submitted" and "Operational Issue" notifications for today are removed
             if submitted_title in existing_by_title:
                 await db.delete(existing_by_title[submitted_title])
-                
-            # If "Operational Issue" notification exists, remove it
-            issue_title = f"Operational Issue at {short_name}"
             if issue_title in existing_by_title:
                 await db.delete(existing_by_title[issue_title])
                 
-            # Create "Report Pending" notification
-            pending_title = f"Report Pending: {short_name}"
-            if pending_title not in existing_by_title:
-                new_notif = Notification(
-                    user_id=current_user.id,
-                    title=pending_title,
-                    message="Daily operations report for today is still pending. Action required.",
-                    type="Report Pending",
-                    is_read=False,
-                    branch_id=branch.id,
-                    created_at=datetime.now(timezone.utc) - timedelta(hours=4)
-                )
-                db.add(new_notif)
+            # Check if it is past the configured limit time
+            if is_after_limit:
+                # Create "Report Pending" notification if not exists
+                if pending_title not in existing_by_title:
+                    pending_datetime_ist = now_ist.replace(hour=limit_hour, minute=limit_minute, second=0, microsecond=0)
+                    pending_datetime_utc = pending_datetime_ist.astimezone(timezone.utc)
+                    
+                    new_notif = Notification(
+                        user_id=current_user.id,
+                        title=pending_title,
+                        message="Daily operations report for today is still pending. Action required.",
+                        type="Report Pending",
+                        is_read=False,
+                        branch_id=branch.id,
+                        created_at=pending_datetime_utc
+                    )
+                    db.add(new_notif)
+            else:
+                # If before limit time, ensure "Report Pending" does not exist
+                if pending_title in existing_by_title:
+                    await db.delete(existing_by_title[pending_title])
                 
     # Calculate Dashboard Aggregations for today's notifications
     total_rev = sum(r.total_revenue if r.total_revenue else r.sales_amount for r in reports)
@@ -230,7 +231,7 @@ async def sync_user_notifications(db: AsyncSession, current_user: User):
             user_id=current_user.id,
             title=ai_title,
             message="Based on today's run-rate, Swarna Mahal is projected to exceed its daily sales target by 12%.",
-            type="AI Recommendation",
+            type="AI Insights",
             is_read=False,
             created_at=datetime.now(timezone.utc) - timedelta(hours=6)
         )
@@ -252,7 +253,7 @@ async def sync_user_notifications(db: AsyncSession, current_user: User):
         {
             "title": "AI Recommendation - Promotion Strategy",
             "message": "DigiGold enrollments are up by 15%. Consider boosting local promo campaigns.",
-            "type": "AI Recommendation",
+            "type": "AI Insights",
             "created_at": yesterday.replace(hour=11, minute=15, second=0)
         },
         {

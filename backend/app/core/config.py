@@ -10,6 +10,7 @@ class Settings(BaseSettings):
     JWT_SECRET: str
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440
+    REPORT_SUBMISSION_TIME: str = "19:00"
 
     OPENAI_API_KEY: str = ""
     SUPABASE_URL: str = ""

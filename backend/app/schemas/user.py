@@ -21,6 +21,7 @@ class UserUpdate(BaseModel):
 class UserResponse(UserBase):
     id: uuid.UUID
     created_at: datetime
+    branch_name: Optional[str] = None
 
     class Config:
         from_attributes = True

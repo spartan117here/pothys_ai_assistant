@@ -20,6 +20,13 @@ class User(Base):
 
     # Relationships
     branch: Mapped["Branch"] = relationship(back_populates="users")
+
+    @property
+    def branch_name(self) -> Optional[str]:
+        if "branch" in self.__dict__ and self.branch is not None:
+            return self.branch.name
+        return None
+
     uploaded_reports: Mapped[list["DailyReport"]] = relationship(back_populates="manager")
     uploaded_documents: Mapped[list["Document"]] = relationship(back_populates="uploader")
     tasks_assigned_to: Mapped[list["Task"]] = relationship(

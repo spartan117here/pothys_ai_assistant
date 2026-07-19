@@ -9,6 +9,7 @@ from sqlalchemy.future import select
 from app.models.user import User
 from app.models.branch import Branch
 from app.models.report import DailyReport
+from app.models.notification import Notification
 from app.core.security import get_password_hash
 
 @pytest.fixture
@@ -179,3 +180,100 @@ async def test_get_pending_reports(client: TestClient, db_session: AsyncSession,
     data2 = response2.json()
     assert len(data2) == 1
     assert data2[0]["branch_code"] == "COIMBATORE"
+
+
+async def test_upload_report_manager_forced_branch(client: TestClient, db_session: AsyncSession, seed_data):
+    """Verify that reports uploaded by a Manager are always forced to their assigned branch."""
+    token = await get_jwt_token(client, "manager.tnagar@pothys.com", "managerPassword123")
+    headers = {"Authorization": f"Bearer {token}"}
+
+    # Manager of TNagar uploads a report containing text matching Coimbatore Mahal
+    mock_extracted_text = "Pothys Daily Report\nBranch: Coimbatore Mahal\nSales: Rs. 600,000\nAttendance: 28\nTarget Achievement: 98%"
+
+    with patch("app.services.storage.storage_service.upload_file", return_value="/uploads/mock_tnagar.pdf") as mock_upload, \
+         patch("app.services.doc_parser.DocumentParser.extract_text_from_pdf", return_value=mock_extracted_text) as mock_pdf_extract:
+         
+        response = client.post(
+            "/api/v1/reports/upload",
+            headers=headers,
+            data={
+                "report_date": "2026-07-16"
+            },
+            files={"file": ("report.pdf", b"dummy contents", "application/pdf")}
+        )
+        
+        assert response.status_code == 201
+        data = response.json()
+        
+        # The report must be forced to TNagar branch, ignoring the Coimbatore content in the file!
+        assert data["branch_id"] == str(seed_data["branch_tnagar"].id)
+        assert data["sales_amount"] == 600000.0
+        
+        # Verify in DB
+        db_res = await db_session.execute(
+            select(DailyReport).where(DailyReport.branch_id == seed_data["branch_tnagar"].id)
+        )
+        report = db_res.scalars().first()
+        assert report is not None
+        assert report.sales_amount == 600000.0
+
+
+async def test_upload_report_triggers_notification(client: TestClient, db_session: AsyncSession, seed_data):
+    """Verify that uploading a report immediately creates a 'Report Submitted' notification for AGM."""
+    token = await get_jwt_token(client, "manager.tnagar@pothys.com", "managerPassword123")
+    headers = {"Authorization": f"Bearer {token}"}
+
+    response = client.post(
+        "/api/v1/reports/upload",
+        headers=headers,
+        data={
+            "report_date": "2026-07-16",
+            "sales_amount": 450000.0,
+            "attendance_count": 42,
+            "target_achievement": 90.0,
+            "inventory_status": "Gold is stable.",
+            "remarks": "None.",
+            "issues": "None."
+        }
+    )
+    assert response.status_code == 201
+
+    # Check that a notification was created for the AGM user
+    agm_token = await get_jwt_token(client, "agm@pothys.com", "agmPassword123")
+    agm_headers = {"Authorization": f"Bearer {agm_token}"}
+    
+    notif_res = client.get("/api/v1/notifications/", headers=agm_headers)
+    assert notif_res.status_code == 200
+    notifs = notif_res.json()
+    
+    # Find Report Submitted notification for TNagar
+    submitted_notif = next((n for n in notifs if "Report Submitted" in n["title"]), None)
+    assert submitted_notif is not None
+    assert submitted_notif["branch_id"] == str(seed_data["branch_tnagar"].id)
+
+
+async def test_overdue_pending_notification(client: TestClient, db_session: AsyncSession, seed_data):
+    """Verify that after the configured submission time, pending reports create notifications."""
+    agm_token = await get_jwt_token(client, "agm@pothys.com", "agmPassword123")
+    agm_headers = {"Authorization": f"Bearer {agm_token}"}
+
+    # Case 1: Before deadline (set REPORT_SUBMISSION_TIME to 23:59)
+    with patch("app.core.config.settings.REPORT_SUBMISSION_TIME", "23:59"):
+        response = client.get("/api/v1/notifications/", headers=agm_headers)
+        assert response.status_code == 200
+        notifs = response.json()
+        
+        # There should be NO pending notifications for today's reports
+        pending_notifs = [n for n in notifs if "Report Pending" in n["title"]]
+        assert len(pending_notifs) == 0
+
+    # Case 2: Past deadline (set REPORT_SUBMISSION_TIME to 00:00)
+    with patch("app.core.config.settings.REPORT_SUBMISSION_TIME", "00:00"):
+        response = client.get("/api/v1/notifications/", headers=agm_headers)
+        assert response.status_code == 200
+        notifs = response.json()
+        
+        # There should be pending notifications generated for the unsubmitted branches (TNagar and Coimbatore)
+        pending_notifs = [n for n in notifs if "Report Pending" in n["title"]]
+        assert len(pending_notifs) == 2
+

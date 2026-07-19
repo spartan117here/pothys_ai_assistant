@@ -15,6 +15,7 @@ export interface UserProfile {
   full_name: string;
   role: 'AGM' | 'MANAGER';
   branch_id: string | null;
+  branch_name: string | null;
   created_at: string;
 }
 
@@ -142,61 +143,19 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       // First check setup status
       const statusResponse = await axios.get(`${API_BASE_URL}/auth/setup-status`);
       const { has_agm } = statusResponse.data;
-      set({ hasAgm: has_agm });
-      
-      if (!has_agm) {
-        set({ isAuthenticated: false, isLoading: false });
-        return;
-      }
-
-      const accessToken = await getAccessToken();
-      if (!accessToken) {
-        set({ isAuthenticated: false, isLoading: false });
-        return;
-      }
-
-      // Verify token by calling /me
-      const meResponse = await axios.get(`${API_BASE_URL}/auth/me`, {
-        headers: { Authorization: `Bearer ${accessToken}` }
-      });
-
       set({
-        user: meResponse.data,
-        token: accessToken,
-        isAuthenticated: true,
+        hasAgm: has_agm,
+        isAuthenticated: false, // Always start unauthenticated on launch to show Role Selection
+        user: null,
+        token: null,
         isLoading: false
       });
     } catch (err) {
-      // Access token expired, attempt refresh
-      try {
-        const refreshToken = await getRefreshToken();
-        if (refreshToken) {
-          const response = await axios.post(`${API_BASE_URL}/auth/refresh`, { refresh_token: refreshToken });
-          const { access_token, refresh_token: new_refresh_token } = response.data;
-          await saveAccessToken(access_token);
-          if (new_refresh_token) {
-            await saveRefreshToken(new_refresh_token);
-          }
-          
-          const meResponse = await axios.get(`${API_BASE_URL}/auth/me`, {
-            headers: { Authorization: `Bearer ${access_token}` }
-          });
-          
-          set({
-            user: meResponse.data,
-            token: access_token,
-            isAuthenticated: true,
-            isLoading: false
-          });
-          return;
-        }
-      } catch (refreshErr) {
-        console.log('Session expired, logging out: ', refreshErr);
-      }
-      
-      // Fallback: Clear session
-      await clearTokens();
-      set({ user: null, token: null, isAuthenticated: false, isLoading: false });
+      set({
+        hasAgm: null,
+        isAuthenticated: false,
+        isLoading: false
+      });
     }
   },
 

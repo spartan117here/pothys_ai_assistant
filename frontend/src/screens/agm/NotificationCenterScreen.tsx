@@ -14,7 +14,7 @@ import { useNotifications, useMarkNotificationRead, useMarkAllNotificationsRead,
 import { useBranchesDashboard } from '../../hooks/useDashboard';
 import { useThemeStore } from '../../store/themeStore';
 
-type FilterType = 'ALL' | 'CRITICAL' | 'WARNING' | 'SUCCESS' | 'INFO';
+type FilterType = 'ALL' | 'ACTION_REQUIRED' | 'UPDATES';
 type GroupLabel = 'Today' | 'Yesterday' | 'Earlier';
 
 function getGroupLabel(dateStr: string): GroupLabel {
@@ -29,23 +29,31 @@ function getGroupLabel(dateStr: string): GroupLabel {
   return 'Earlier';
 }
 
-function formatRelativeTime(dateStr: string): string {
+function formatNotificationTime(dateStr: string): string {
+  const dateObj = new Date(dateStr);
+  
+  let hours = dateObj.getHours();
+  const minutes = dateObj.getMinutes();
+  const ampm = hours >= 12 ? 'PM' : 'AM';
+  hours = hours % 12;
+  hours = hours ? hours : 12;
+  const minStr = minutes < 10 ? '0' + minutes : minutes;
+  const timeStr = `${hours}:${minStr} ${ampm}`;
+  
   const now = new Date();
-  const created = new Date(dateStr);
-  const diffMs = now.getTime() - created.getTime();
-  const diffMins = Math.floor(diffMs / 60000);
-
-  if (diffMins < 1) return 'Just now';
-  if (diffMins < 60) return `${diffMins}m ago`;
-
-  const diffHrs = Math.floor(diffMins / 60);
-  if (diffHrs < 24) return `${diffHrs}h ago`;
-
-  const diffDays = Math.floor(diffHrs / 24);
-  if (diffDays === 1) return 'Yesterday';
-  if (diffDays < 7) return `${diffDays} days ago`;
-  if (diffDays < 30) return `${Math.floor(diffDays / 7)} week(s) ago`;
-  return created.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const yesterdayStart = new Date(todayStart.getTime() - 86400000);
+  
+  if (dateObj >= todayStart) {
+    return `Today • ${timeStr}`;
+  } else if (dateObj >= yesterdayStart) {
+    return `Yesterday • ${timeStr}`;
+  } else {
+    const day = dateObj.getDate();
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const month = months[dateObj.getMonth()];
+    return `${day} ${month} • ${timeStr}`;
+  }
 }
 
 export default function NotificationCenterScreen({ navigation }: any) {
@@ -64,50 +72,94 @@ export default function NotificationCenterScreen({ navigation }: any) {
     setRefreshing(false);
   }, [refetch]);
 
-  // Map types to Colors & Emojis
+  // Map types to Colors, Icons & Category
   const getThemeDetails = (type: string) => {
     switch (type) {
-      case 'Report Submitted':
-      case 'Highest Performing Branch':
-      case 'Highest Performing Executive':
-        return {
-          color: colors.success,
-          bgColor: colors.successBg || 'rgba(16, 185, 129, 0.1)',
-          icon: '✅',
-          category: 'SUCCESS',
-        };
+      // Action Required
       case 'Report Pending':
-      case 'Attendance Alert':
         return {
           color: colors.warning,
           bgColor: colors.warningBg || 'rgba(245, 158, 11, 0.1)',
           icon: '⏳',
-          category: 'WARNING',
+          category: 'ACTION_REQUIRED',
         };
       case 'Operational Issue':
-      case 'Customer Complaint':
+      case 'Operational Issues':
         return {
           color: colors.error,
           bgColor: colors.errorBg || 'rgba(239, 68, 68, 0.1)',
           icon: '🚨',
-          category: 'CRITICAL',
+          category: 'ACTION_REQUIRED',
         };
+      case 'Customer Complaint':
+      case 'Customer Complaints':
+        return {
+          color: colors.error,
+          bgColor: colors.errorBg || 'rgba(239, 68, 68, 0.1)',
+          icon: '👤',
+          category: 'ACTION_REQUIRED',
+        };
+      case 'Attendance Alert':
+      case 'Attendance Alerts':
+        return {
+          color: colors.warning,
+          bgColor: colors.warningBg || 'rgba(245, 158, 11, 0.1)',
+          icon: '📊',
+          category: 'ACTION_REQUIRED',
+        };
+      case 'Target Below Threshold':
+        return {
+          color: colors.error,
+          bgColor: colors.errorBg || 'rgba(239, 68, 68, 0.1)',
+          icon: '📉',
+          category: 'ACTION_REQUIRED',
+        };
+
+      // Updates
+      case 'Report Submitted':
+        return {
+          color: colors.success,
+          bgColor: colors.successBg || 'rgba(16, 185, 129, 0.1)',
+          icon: '✅',
+          category: 'UPDATES',
+        };
+      case 'Highest Performing Branch':
+        return {
+          color: colors.success,
+          bgColor: colors.successBg || 'rgba(16, 185, 129, 0.1)',
+          icon: '🏆',
+          category: 'UPDATES',
+        };
+      case 'Highest Performing Executive':
+        return {
+          color: colors.success,
+          bgColor: colors.successBg || 'rgba(16, 185, 129, 0.1)',
+          icon: '🏅',
+          category: 'UPDATES',
+        };
+      case 'AI Insights':
       case 'AI Recommendation':
+      case 'AI RAG Insight':
       default:
         return {
           color: colors.info,
           bgColor: colors.infoBg || 'rgba(59, 130, 246, 0.1)',
           icon: '💡',
-          category: 'INFO',
+          category: 'UPDATES',
         };
     }
   };
 
-  // Filter notifications based on active tab
+  // Filter and sort notifications (newest first)
   const filteredNotifications = useMemo(() => {
     if (!notifications) return [];
-    if (activeFilter === 'ALL') return notifications;
-    return notifications.filter(n => {
+    
+    const sorted = [...notifications].sort(
+      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    );
+    
+    if (activeFilter === 'ALL') return sorted;
+    return sorted.filter(n => {
       const details = getThemeDetails(n.type);
       return details.category === activeFilter;
     });
@@ -230,7 +282,7 @@ export default function NotificationCenterScreen({ navigation }: any) {
                   {item.message}
                 </Text>
                 <Text style={[styles.cardTime, { color: colors.textMuted }]}>
-                  {formatRelativeTime(item.created_at)}
+                  {formatNotificationTime(item.created_at)}
                 </Text>
               </View>
             </TouchableOpacity>
@@ -242,10 +294,8 @@ export default function NotificationCenterScreen({ navigation }: any) {
 
   const tabs: { label: string; value: FilterType; color: string }[] = [
     { label: 'All', value: 'ALL', color: colors.primary },
-    { label: 'Critical', value: 'CRITICAL', color: colors.error },
-    { label: 'Warning', value: 'WARNING', color: colors.warning },
-    { label: 'Success', value: 'SUCCESS', color: colors.success },
-    { label: 'Info', value: 'INFO', color: colors.info },
+    { label: 'Action Required', value: 'ACTION_REQUIRED', color: colors.error },
+    { label: 'Updates', value: 'UPDATES', color: colors.success },
   ];
 
   const isEmpty =

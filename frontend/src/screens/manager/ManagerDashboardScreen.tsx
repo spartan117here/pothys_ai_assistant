@@ -192,7 +192,7 @@ export default function ManagerDashboardScreen() {
 
   const isSubmitted = todayReport?.status === 'SUBMITTED';
   const today = formatDate(new Date().toISOString());
-  const branchName = user?.full_name || 'Branch';
+  const branchName = user?.branch_name || 'Branch';
   
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>

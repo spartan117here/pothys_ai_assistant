@@ -3,6 +3,7 @@ from typing import Optional
 from sqlalchemy import func
 from sqlalchemy.future import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 from app.models.user import User
 from app.schemas.user import UserCreate
 from app.core.security import get_password_hash
@@ -13,12 +14,20 @@ class UserRepository:
 
     async def get_by_id(self, user_id: uuid.UUID) -> Optional[User]:
         """Fetch user by primary key UUID."""
-        result = await self.db.execute(select(User).where(User.id == user_id))
+        result = await self.db.execute(
+            select(User)
+            .where(User.id == user_id)
+            .options(selectinload(User.branch))
+        )
         return result.scalars().first()
 
     async def get_by_email(self, email: str) -> Optional[User]:
         """Fetch user by email using case-insensitive match."""
-        result = await self.db.execute(select(User).where(func.lower(User.email) == email.lower()))
+        result = await self.db.execute(
+            select(User)
+            .where(func.lower(User.email) == email.lower())
+            .options(selectinload(User.branch))
+        )
         return result.scalars().first()
 
     async def create(self, user_in: UserCreate) -> User:
