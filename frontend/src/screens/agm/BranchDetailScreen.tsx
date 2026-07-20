@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   StyleSheet,
   View,
@@ -8,13 +8,19 @@ import {
   Animated,
   RefreshControl,
   TouchableOpacity,
+  Modal,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useBranchAnalytics } from '../../hooks/useDashboard';
 import { useThemeStore } from '../../store/themeStore';
+import { useAuthStore } from '../../store/authStore';
 import { getShortBranchName } from '../../utils/branchHelper';
 import { formatIndianCurrency } from '../../utils/currencyFormatter';
 import { BranchStatus } from '../../hooks/useDashboard';
+import { useQueryClient } from '@tanstack/react-query';
+import apiClient from '../../services/api';
+import { downloadAndShareReport } from '../../utils/pdfDownloadHelper';
 
 interface BranchDetailScreenProps {
   navigation: any;
@@ -82,8 +88,62 @@ export default function BranchDetailScreen({ navigation, route }: any) {
   const { data: analyticsData, isLoading, refetch } = useBranchAnalytics(branch.id);
   const analytics = analyticsData as any;
   const { colors, theme } = useThemeStore();
+  const { user } = useAuthStore();
+  const queryClient = useQueryClient();
   const [refreshing, setRefreshing] = React.useState(false);
+  const [menuVisible, setMenuVisible] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const fadeAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    navigation.setOptions({
+      headerRight: () => (
+        <TouchableOpacity 
+          style={{ marginRight: 16, paddingHorizontal: 10, paddingVertical: 5 }}
+          onPress={() => setMenuVisible(true)}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <Text style={{ fontSize: 24, fontWeight: 'bold', color: colors.primary }}>⋮</Text>
+        </TouchableOpacity>
+      ),
+    });
+  }, [navigation, colors]);
+
+  const confirmDeleteReport = () => {
+    if (!branch?.report?.id) return;
+    Alert.alert(
+      "Delete Report",
+      "Are you sure you want to permanently delete today's report for this branch?",
+      [
+        { text: "Cancel", style: "cancel" },
+        { 
+          text: "Delete", 
+          style: "destructive", 
+          onPress: handleDeleteReport 
+        }
+      ]
+    );
+  };
+
+  const handleDeleteReport = async () => {
+    if (!branch?.report?.id) return;
+    setDeleting(true);
+    try {
+      await apiClient.delete(`/reports/${branch.report.id}`);
+      Alert.alert("Success", "Report deleted successfully.");
+      
+      // Update state and navigate back
+      queryClient.invalidateQueries({ queryKey: ['branches-dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
+      navigation.goBack();
+    } catch (err: any) {
+      console.error(err);
+      const msg = err.response?.data?.detail || "Failed to delete the report.";
+      Alert.alert("Error", msg);
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   useEffect(() => {
     Animated.timing(fadeAnim, {
@@ -365,6 +425,68 @@ export default function BranchDetailScreen({ navigation, route }: any) {
           </TouchableOpacity>
         </Animated.View>
       </ScrollView>
+
+      {/* Popup Menu Modal */}
+      <Modal
+        visible={menuVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setMenuVisible(false)}
+      >
+        <TouchableOpacity 
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setMenuVisible(false)}
+        >
+          <View style={[styles.menuDropdown, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <Text style={[styles.menuHeader, { color: colors.textSecondary }]}>
+              {getShortBranchName(branch.name)} Options
+            </Text>
+            <View style={[styles.menuDivider, { backgroundColor: colors.border }]} />
+            
+            {branch.status !== 'SUBMITTED' && (
+              <Text style={[styles.noReportText, { color: colors.textMuted }]}>
+                Awaiting report submission for today.
+              </Text>
+            )}
+
+            {/* Download Report */}
+            {branch.status === 'SUBMITTED' && user?.role === 'AGM' && (
+              <TouchableOpacity 
+                style={styles.menuItem}
+                onPress={async () => {
+                  setMenuVisible(false);
+                  if (!branch.report?.id) return;
+                  try {
+                    const sName = getShortBranchName(branch.name);
+                    const todayStr = branch.report.date || new Date().toISOString().split('T')[0];
+                    await downloadAndShareReport(branch.report.id, sName, todayStr);
+                  } catch (e: any) {
+                    Alert.alert("Error", "Failed to download PDF.");
+                  }
+                }}
+              >
+                <Text style={styles.menuItemIcon}>📥</Text>
+                <Text style={[styles.menuItemText, { color: colors.text }]}>Download Report</Text>
+              </TouchableOpacity>
+            )}
+
+            {/* Delete Report */}
+            {branch.status === 'SUBMITTED' && user?.role === 'AGM' && (
+              <TouchableOpacity 
+                style={[styles.menuItem, styles.deleteMenuItem]}
+                onPress={() => {
+                  setMenuVisible(false);
+                  confirmDeleteReport();
+                }}
+              >
+                <Text style={[styles.menuItemIcon, { color: colors.error }]}>🗑</Text>
+                <Text style={[styles.menuItemText, { color: colors.error }]}>Delete Report</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -654,5 +776,64 @@ const styles = StyleSheet.create({
   aiCardDesc: {
     fontSize: 14,
     lineHeight: 22,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+  },
+  menuDropdown: {
+    width: '100%',
+    maxWidth: 320,
+    borderRadius: 20,
+    borderWidth: 1,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.25,
+    shadowRadius: 15,
+    elevation: 10,
+  },
+  menuHeader: {
+    fontSize: 16,
+    fontWeight: '800',
+    textAlign: 'center',
+    marginBottom: 12,
+    letterSpacing: 0.5,
+  },
+  menuDivider: {
+    height: 1,
+    width: '100%',
+    marginBottom: 8,
+  },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+  },
+  menuItemIcon: {
+    fontSize: 18,
+    marginRight: 12,
+    width: 24,
+    textAlign: 'center',
+  },
+  menuItemText: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  deleteMenuItem: {
+    marginTop: 8,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: 'rgba(239, 68, 68, 0.2)',
+  },
+  noReportText: {
+    paddingVertical: 12,
+    fontSize: 14,
+    textAlign: 'center',
+    fontStyle: 'italic',
   },
 });

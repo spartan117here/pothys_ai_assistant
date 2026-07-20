@@ -45,7 +45,7 @@ async def test_login_invalid_password(client: TestClient, db_session: AsyncSessi
         "/api/v1/auth/login",
         json={"email": "test.agm2@pothys.com", "password": "wrongPassword"}
     )
-    assert response.status_code == 400
+    assert response.status_code == 401
     assert response.json()["detail"] == "Incorrect email or password"
 
 async def test_get_current_user_me(client: TestClient, db_session: AsyncSession):

@@ -71,9 +71,11 @@ export function useUploadReport() {
       return res.data;
     },
     onSuccess: () => {
-      // Refresh dashboard caches on successful reports submissions
+      // Refresh dashboard & notification caches on successful report submission
       queryClient.invalidateQueries({ queryKey: ['branches-dashboard'] });
       queryClient.invalidateQueries({ queryKey: ['pending-reports'] });
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
+      queryClient.invalidateQueries({ queryKey: ['notifications-unread-count'] });
     },
   });
 }

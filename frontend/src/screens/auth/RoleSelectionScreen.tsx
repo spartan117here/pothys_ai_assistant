@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   StyleSheet,
   View,
@@ -7,9 +7,12 @@ import {
   Animated,
   Platform,
   Dimensions,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS } from '../../theme/colors';
+import axios from 'axios';
+import { API_BASE_URL } from '../../store/authStore';
 
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = Math.min(width - 48, 420);
@@ -23,6 +26,29 @@ export default function RoleSelectionScreen({ navigation }: any) {
   const card2Opacity = useRef(new Animated.Value(0)).current;
   const card2Y       = useRef(new Animated.Value(40)).current;
   const footerOpacity = useRef(new Animated.Value(0)).current;
+
+  const [checkingAgm, setCheckingAgm] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const handleAgmLoginPress = async () => {
+    if (checkingAgm) return;
+    setCheckingAgm(true);
+    setErrorMessage(null);
+    try {
+      const response = await axios.get(`${API_BASE_URL}/auth/agm-status`);
+      const { agm_exists } = response.data;
+      if (agm_exists) {
+        navigation.navigate('AGMLogin');
+      } else {
+        navigation.navigate('ExecutiveSetup');
+      }
+    } catch (err: any) {
+      console.error('Error checking AGM status:', err);
+      setErrorMessage('Unable to connect to the server. Please try again.');
+    } finally {
+      setCheckingAgm(false);
+    }
+  };
 
   useEffect(() => {
     Animated.sequence([
@@ -66,9 +92,10 @@ export default function RoleSelectionScreen({ navigation }: any) {
           {/* AGM Card */}
           <Animated.View style={{ opacity: card1Opacity, transform: [{ translateY: card1Y }], width: CARD_WIDTH }}>
             <TouchableOpacity
-              style={styles.roleCard}
-              onPress={() => navigation.navigate('AGMLogin')}
+              style={[styles.roleCard, checkingAgm && { opacity: 0.7 }]}
+              onPress={handleAgmLoginPress}
               activeOpacity={0.85}
+              disabled={checkingAgm}
             >
               {/* Gold top accent bar */}
               <View style={styles.cardAccentBar} />
@@ -85,7 +112,11 @@ export default function RoleSelectionScreen({ navigation }: any) {
                   </Text>
                 </View>
                 <View style={styles.cardArrowWrap}>
-                  <Text style={styles.cardArrow}>›</Text>
+                  {checkingAgm ? (
+                    <ActivityIndicator color={COLORS.primary} size="small" />
+                  ) : (
+                    <Text style={styles.cardArrow}>›</Text>
+                  )}
                 </View>
               </View>
 
@@ -97,9 +128,10 @@ export default function RoleSelectionScreen({ navigation }: any) {
           {/* Manager Card */}
           <Animated.View style={{ opacity: card2Opacity, transform: [{ translateY: card2Y }], width: CARD_WIDTH, marginTop: 16 }}>
             <TouchableOpacity
-              style={[styles.roleCard, styles.roleCardManager]}
-              onPress={() => navigation.navigate('ManagerLogin')}
+              style={[styles.roleCard, styles.roleCardManager, checkingAgm && { opacity: 0.7 }]}
+              onPress={() => !checkingAgm && navigation.navigate('ManagerLogin')}
               activeOpacity={0.85}
+              disabled={checkingAgm}
             >
               <View style={[styles.cardAccentBar, styles.cardAccentBarManager]} />
 
@@ -120,6 +152,12 @@ export default function RoleSelectionScreen({ navigation }: any) {
               </View>
             </TouchableOpacity>
           </Animated.View>
+
+          {errorMessage && (
+            <View style={styles.errorContainer}>
+              <Text style={styles.errorText}>{errorMessage}</Text>
+            </View>
+          )}
         </View>
 
         {/* Footer */}
@@ -351,5 +389,21 @@ const styles = StyleSheet.create({
     color: COLORS.textMuted,
     textAlign: 'center',
     lineHeight: 16,
+  },
+  errorContainer: {
+    backgroundColor: COLORS.errorBg || '#2A1818',
+    borderWidth: 1,
+    borderColor: COLORS.error || '#EF4444',
+    padding: 10,
+    borderRadius: 8,
+    marginTop: 16,
+    width: CARD_WIDTH,
+    alignItems: 'center',
+  },
+  errorText: {
+    color: COLORS.error || '#EF4444',
+    fontSize: 13,
+    fontWeight: '500',
+    textAlign: 'center',
   },
 });

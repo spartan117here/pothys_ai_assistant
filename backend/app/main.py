@@ -54,6 +54,7 @@ def health_check():
     return {"status": "healthy", "service": "Pothys AGM AI Executive Assistant"}
 
 # Mount API Routers
+app.include_router(auth_router, prefix="/auth", tags=["Authentication Root"])
 app.include_router(auth_router, prefix="/api/v1/auth", tags=["Authentication"])
 app.include_router(reports_router, prefix="/api/v1/reports", tags=["Daily Reports"])
 app.include_router(branches_router, prefix="/api/v1/branches", tags=["Branch Monitoring"])

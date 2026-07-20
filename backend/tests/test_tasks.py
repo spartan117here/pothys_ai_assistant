@@ -15,8 +15,7 @@ async def seed_task_data(db_session: AsyncSession):
     """Seed test data with AGM, Managers, and a branch."""
     b1 = Branch(name="T. Nagar Mahal", code="TNAGAR", monthly_sales_target=500000)
     db_session.add(b1)
-    await db_session.commit()
-    await db_session.refresh(b1)
+    await db_session.flush()
 
     # Manager 1
     mgr_pw = get_password_hash("managerPassword123")
@@ -48,7 +47,7 @@ async def seed_task_data(db_session: AsyncSession):
     )
 
     db_session.add_all([manager1, manager2, agm])
-    await db_session.commit()
+    await db_session.flush()
     await db_session.refresh(manager1)
     await db_session.refresh(manager2)
     await db_session.refresh(agm)

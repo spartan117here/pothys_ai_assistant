@@ -35,6 +35,9 @@ class SetupRequest(BaseModel):
 class SetupStatusResponse(BaseModel):
     has_agm: bool
 
+class AGMStatusResponse(BaseModel):
+    agm_exists: bool
+
 class ForgotPasswordRequest(BaseModel):
     email: EmailStr
 
@@ -93,8 +96,9 @@ async def login(payload: LoginRequest, db: AsyncSession = Depends(get_db)):
     user = await user_repo.get_by_email(payload.email)
     if not user or not verify_password(payload.password, user.password_hash):
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Incorrect email or password"
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect email or password",
+            headers={"WWW-Authenticate": "Bearer"},
         )
     
     access_token = create_access_token(subject=user.id)
@@ -108,6 +112,13 @@ async def setup_status(db: AsyncSession = Depends(get_db)):
     has_agm = await user_repo.check_agm_exists()
     return SetupStatusResponse(has_agm=has_agm)
 
+@router.get("/agm-status", response_model=AGMStatusResponse)
+async def agm_status(db: AsyncSession = Depends(get_db)):
+    """Check if an AGM account exists in PostgreSQL."""
+    user_repo = UserRepository(db)
+    agm_exists = await user_repo.check_agm_exists()
+    return AGMStatusResponse(agm_exists=agm_exists)
+
 @router.post("/setup", response_model=Token)
 async def setup_executive(payload: SetupRequest, db: AsyncSession = Depends(get_db)):
     """Configure the initial single AGM executive account. Allowed only once."""
@@ -117,6 +128,32 @@ async def setup_executive(payload: SetupRequest, db: AsyncSession = Depends(get_
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Executive account already exists."
+        )
+    
+    # Validate email uniqueness
+    existing_user = await user_repo.get_by_email(payload.email)
+    if existing_user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email address already registered."
+        )
+        
+    # Validate password strength
+    password = payload.password
+    if len(password) < 8:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Password must be at least 8 characters long."
+        )
+    if not any(char.isdigit() for char in password):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Password must contain at least one number."
+        )
+    if not any(char.isalpha() for char in password):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Password must contain at least one letter."
         )
     
     user_in = UserCreate(

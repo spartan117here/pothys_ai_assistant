@@ -14,11 +14,15 @@ from app.db.base import Base
 from app.db.session import get_db
 from app.main import app
 
+from sqlalchemy.pool import StaticPool
+
 # Local async SQLite connection string
-TEST_DATABASE_URL = "sqlite+aiosqlite:///./test_temp.db"
+TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
 
 engine = create_async_engine(
-    TEST_DATABASE_URL, connect_args={"check_same_thread": False}
+    TEST_DATABASE_URL,
+    connect_args={"check_same_thread": False},
+    poolclass=StaticPool
 )
 TestingSessionLocal = async_sessionmaker(
     bind=engine, class_=AsyncSession, expire_on_commit=False

@@ -23,7 +23,7 @@ export default function LoginScreen({ navigation }: any) {
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [localError, setLocalError] = useState<string | null>(null);
 
-  const { login, isLoading, error } = useAuthStore();
+  const { login, loginLoading, error } = useAuthStore();
 
   // Clear previous session errors on screen mount
   useEffect(() => {
@@ -79,7 +79,7 @@ export default function LoginScreen({ navigation }: any) {
   };
 
   const handleLogin = async () => {
-    if (isLoading) return; // Prevent multiple requests
+    if (loginLoading) return; // Prevent multiple requests
     setLocalError(null);
     useAuthStore.setState({ error: null });
 
@@ -138,7 +138,7 @@ export default function LoginScreen({ navigation }: any) {
               autoCorrect={false}
               value={email}
               onChangeText={handleEmailChange}
-              editable={!isLoading}
+              editable={!loginLoading}
             />
             {emailError && <Text style={styles.inlineError}>{emailError}</Text>}
 
@@ -152,7 +152,7 @@ export default function LoginScreen({ navigation }: any) {
               autoCorrect={false}
               value={password}
               onChangeText={handlePasswordChange}
-              editable={!isLoading}
+              editable={!loginLoading}
             />
             {passwordError && <Text style={styles.inlineError}>{passwordError}</Text>}
 
@@ -163,12 +163,12 @@ export default function LoginScreen({ navigation }: any) {
             )}
 
             <TouchableOpacity
-              style={[styles.button, isLoading && styles.buttonDisabled]}
+              style={[styles.button, loginLoading && styles.buttonDisabled]}
               onPress={handleLogin}
-              disabled={isLoading}
+              disabled={loginLoading}
               activeOpacity={0.8}
             >
-              {isLoading ? (
+              {loginLoading ? (
                 <ActivityIndicator color={COLORS.textOnPrimary} size="small" />
               ) : (
                 <Text style={styles.buttonText}>Authenticate Session</Text>
@@ -177,8 +177,8 @@ export default function LoginScreen({ navigation }: any) {
 
             <TouchableOpacity
               style={styles.forgotButton}
-              onPress={() => !isLoading && navigation.navigate('ForgotPassword')}
-              disabled={isLoading}
+              onPress={() => !loginLoading && navigation.navigate('ForgotPassword')}
+              disabled={loginLoading}
             >
               <Text style={styles.forgotButtonText}>Forgot Password?</Text>
             </TouchableOpacity>

@@ -7,6 +7,7 @@ import LoginScreen          from '../screens/auth/LoginScreen';
 import ManagerLoginScreen   from '../screens/auth/ManagerLoginScreen';
 import ForgotPasswordScreen from '../screens/auth/ForgotPasswordScreen';
 import ResetPasswordScreen  from '../screens/auth/ResetPasswordScreen';
+import ExecutiveSetupScreen from '../screens/auth/ExecutiveSetupScreen';
 
 export type AuthStackParamList = {
   RoleSelection: undefined;
@@ -14,6 +15,7 @@ export type AuthStackParamList = {
   ManagerLogin:  undefined;
   ForgotPassword: undefined;
   ResetPassword:  { email: string; token: string };
+  ExecutiveSetup: undefined;
 };
 
 const Stack = createStackNavigator<AuthStackParamList>();
@@ -46,6 +48,7 @@ export default function AuthNavigator() {
       <Stack.Screen name="ManagerLogin"   component={ManagerLoginScreen} />
       <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
       <Stack.Screen name="ResetPassword"  component={ResetPasswordScreen} />
+      <Stack.Screen name="ExecutiveSetup" component={ExecutiveSetupScreen} />
     </Stack.Navigator>
   );
 }

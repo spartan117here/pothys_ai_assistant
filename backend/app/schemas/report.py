@@ -1,7 +1,7 @@
 import uuid
 from datetime import date, datetime
 from typing import Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_serializer
 
 class DailyReportCreate(BaseModel):
     date: date
@@ -26,6 +26,14 @@ class DailyReportResponse(BaseModel):
     issues: Optional[str]
     original_file_url: Optional[str]
     created_at: datetime
+    uploaded_at: datetime
+
+    @field_serializer('created_at', 'uploaded_at')
+    def serialize_datetime(self, dt: datetime, _info):
+        from datetime import timezone
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt.isoformat()
 
     class Config:
         from_attributes = True

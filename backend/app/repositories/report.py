@@ -38,6 +38,7 @@ class DailyReportRepository:
 
     async def create(self, branch_id: uuid.UUID, manager_id: uuid.UUID, report_in: DailyReportCreate) -> DailyReport:
         """Insert a new daily report into the database."""
+        from datetime import datetime, timezone
         db_report = DailyReport(
             branch_id=branch_id,
             manager_id=manager_id,
@@ -48,7 +49,8 @@ class DailyReportRepository:
             inventory_status=report_in.inventory_status,
             remarks=report_in.remarks,
             issues=report_in.issues,
-            original_file_url=report_in.original_file_url
+            original_file_url=report_in.original_file_url,
+            uploaded_at=datetime.now(timezone.utc)
         )
         self.db.add(db_report)
         await self.db.commit()

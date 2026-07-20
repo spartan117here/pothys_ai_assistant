@@ -14,7 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '../../store/authStore';
 import { COLORS } from '../../theme/colors';
 
-export default function ExecutiveSetupScreen() {
+export default function ExecutiveSetupScreen({ navigation }: any) {
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -52,6 +52,12 @@ export default function ExecutiveSetupScreen() {
     }
     if (val.length < 8) {
       return 'Password must be at least 8 characters';
+    }
+    if (!/[A-Za-z]/.test(val)) {
+      return 'Password must contain at least one letter';
+    }
+    if (!/[0-9]/.test(val)) {
+      return 'Password must contain at least one number';
     }
     return null;
   };
@@ -127,6 +133,11 @@ export default function ExecutiveSetupScreen() {
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
         >
+          {/* Back to role selection */}
+          <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+            <Text style={styles.backArrow}>‹</Text>
+          </TouchableOpacity>
+
           <View style={styles.logoSection}>
             <Text style={styles.brandTitle}>POTHYS</Text>
             <Text style={styles.brandSub}>Swarna Mahal</Text>
@@ -234,6 +245,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 32,
     paddingVertical: 40,
   },
+  backBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginBottom: 20,
+    alignSelf: 'flex-start',
+  },
+  backArrow: { fontSize: 26, color: COLORS.textSecondary, lineHeight: 30 },
   logoSection: {
     alignItems: 'center',
     marginBottom: 30,

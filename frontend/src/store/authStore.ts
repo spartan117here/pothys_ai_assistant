@@ -25,6 +25,7 @@ interface AuthState {
   isAuthenticated: boolean;
   isLoading: boolean;
   error: string | null;
+  loginLoading: boolean;
   
   hasAgm: boolean | null;
   setupLoading: boolean;
@@ -82,6 +83,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   isAuthenticated: false,
   isLoading: true,
   error: null,
+  loginLoading: false,
   
   hasAgm: null,
   setupLoading: false,
@@ -96,7 +98,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   resetPasswordError: null,
 
   login: async (email, password) => {
-    set({ isLoading: true, error: null });
+    set({ loginLoading: true, error: null });
     try {
       const response = await axios.post(`${API_BASE_URL}/auth/login`, { email, password });
       const { access_token, refresh_token } = response.data;
@@ -113,12 +115,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         token: access_token,
         isAuthenticated: true,
         hasAgm: true,
-        isLoading: false
+        loginLoading: false
       });
       return true;
     } catch (err: any) {
       const msg = parseValidationError(err);
-      set({ error: msg, isLoading: false });
+      set({ error: msg, loginLoading: false });
       return false;
     }
   },

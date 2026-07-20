@@ -22,7 +22,7 @@ export default function ManagerLoginScreen({ navigation }: any) {
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [localError, setLocalError] = useState<string | null>(null);
 
-  const { login, isLoading, error } = useAuthStore();
+  const { login, loginLoading, error } = useAuthStore();
 
   const headerOpacity = new Animated.Value(0);
 
@@ -49,7 +49,7 @@ export default function ManagerLoginScreen({ navigation }: any) {
   };
 
   const handleLogin = async () => {
-    if (isLoading) return;
+    if (loginLoading) return;
     setLocalError(null);
     useAuthStore.setState({ error: null });
 
@@ -119,7 +119,7 @@ export default function ManagerLoginScreen({ navigation }: any) {
                   useAuthStore.setState({ error: null });
                   if (emailError) setEmailError(validateEmail(v.trim()));
                 }}
-                editable={!isLoading}
+                editable={!loginLoading}
                 returnKeyType="next"
               />
               {emailError && <Text style={styles.fieldError}>{emailError}</Text>}
@@ -140,7 +140,7 @@ export default function ManagerLoginScreen({ navigation }: any) {
                   useAuthStore.setState({ error: null });
                   if (passwordError) setPasswordError(validatePassword(v));
                 }}
-                editable={!isLoading}
+                editable={!loginLoading}
                 returnKeyType="done"
                 onSubmitEditing={handleLogin}
               />
@@ -155,12 +155,12 @@ export default function ManagerLoginScreen({ navigation }: any) {
 
               {/* Login Button */}
               <TouchableOpacity
-                style={[styles.loginBtn, isLoading && styles.loginBtnDisabled]}
+                style={[styles.loginBtn, loginLoading && styles.loginBtnDisabled]}
                 onPress={handleLogin}
-                disabled={isLoading}
+                disabled={loginLoading}
                 activeOpacity={0.85}
               >
-                {isLoading ? (
+                {loginLoading ? (
                   <ActivityIndicator color="#0B0B0E" size="small" />
                 ) : (
                   <Text style={styles.loginBtnText}>Authenticate Session</Text>

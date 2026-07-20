@@ -21,6 +21,7 @@ class DailyReport(Base):
     original_file_url: Mapped[str] = mapped_column(String(500), nullable=True)
     status: Mapped[str] = mapped_column(String(20), default="DRAFT")
     created_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    uploaded_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     # Additional Sheet 1 summary fields
     sub_manager_name: Mapped[str] = mapped_column(String(100), nullable=True)

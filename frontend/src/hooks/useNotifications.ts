@@ -21,7 +21,9 @@ export function useNotifications() {
       const res = await apiClient.get('/notifications');
       return res.data;
     },
-    refetchInterval: 15000, // refresh notifications every 15s to keep dynamically updated
+    staleTime: 0,
+    refetchOnMount: 'always',
+    refetchInterval: 10000, // refresh notifications every 10s
   });
 }
 
@@ -34,7 +36,9 @@ export function useUnreadCount() {
       const res = await apiClient.get('/notifications/unread-count');
       return res.data;
     },
-    refetchInterval: 15000, // poll every 15s for badge updates
+    staleTime: 0,
+    refetchOnMount: 'always',
+    refetchInterval: 10000, // poll every 10s for badge updates
   });
 
   // Sync into Zustand store whenever data changes

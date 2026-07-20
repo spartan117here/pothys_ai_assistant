@@ -7,10 +7,7 @@ import { useThemeStore } from '../store/themeStore';
 import AuthNavigator from './AuthNavigator';
 import AGMNavigator from './AGMNavigator';
 import ManagerNavigator from './ManagerNavigator';
-import ExecutiveSetupScreen from '../screens/auth/ExecutiveSetupScreen';
 import { AuthErrorBoundary } from '../components/AuthErrorBoundary';
-
-const Stack = createStackNavigator();
 
 export default function AppNavigator() {
   const { isAuthenticated, user, isLoading, hasAgm, checkAuthStatus } = useAuthStore();
@@ -33,11 +30,7 @@ export default function AppNavigator() {
   return (
     <NavigationContainer>
       <AuthErrorBoundary>
-        {hasAgm === false ? (
-          <Stack.Navigator screenOptions={{ headerShown: false, cardStyle: { flex: 1, backgroundColor: colors.background } }}>
-            <Stack.Screen name="ExecutiveSetup" component={ExecutiveSetupScreen} />
-          </Stack.Navigator>
-        ) : !isAuthenticated ? (
+        {!isAuthenticated ? (
           <AuthNavigator />
         ) : user?.role === 'AGM' ? (
           <AGMNavigator />
